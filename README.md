@@ -1,5 +1,4 @@
 # VLSI-Traffic-Light-FSM
-# FPGA Traffic Light Controller Using Verilog HDL
 
 ## Project Overview
 
