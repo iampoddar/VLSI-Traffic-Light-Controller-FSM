@@ -1,163 +1,132 @@
 # VLSI-Traffic-Light-FSM
 
-## Project Overview
+Project Overview
 
-This project implements a two-road traffic light controller using **Verilog HDL and a Moore Finite State Machine (FSM)**. The controller manages the traffic signals for two intersecting roads, Road A and Road B, by cycling through green, yellow, and red light combinations in a predefined sequence.
+This project presents a traffic signal control system for a two-road intersection, developed using Verilog HDL and a Moore Finite State Machine (FSM). It coordinates the traffic lights on Road A and Road B by switching between red, yellow, and green signals according to a predefined operating sequence.
 
-The design uses a clock divider to generate a one-second timing pulse from the FPGA's high-frequency clock. A countdown timer uses this pulse to control the duration of each traffic-light state. The controller also incorporates dedicated all-red states between the traffic phases to provide a clearance interval before traffic is permitted to move in the opposite direction.
+A clock divider generates a one-second enable pulse from the FPGA's high-frequency clock, allowing a countdown timer to track the duration of each signal phase. The design also includes dedicated all-red phases between the two roads' traffic movements, providing a clearance period before the opposite road receives a green signal.
 
-The project demonstrates the practical application of digital design concepts, including finite state machines, sequential and combinational logic, clock division, countdown timers, parameterization, and RTL design using Verilog HDL.
+The project highlights several fundamental digital design techniques, such as FSM implementation, sequential and combinational logic, clock division, countdown-based timing, parameterized design, and Register Transfer Level (RTL) development using Verilog HDL.
 
-## Objectives
+Project Objectives
+Develop a two-road traffic signal controller based on a Moore FSM.
+Generate a one-second timing pulse using a clock-divider circuit.
+Implement a countdown mechanism to determine the duration of each signal phase.
+Allow green, yellow, and all-red intervals to be configured through parameters.
+Include all-red intervals when switching between the two traffic directions.
+Organize the state encoding and output-decoding logic for clarity and maintainability.
+Create an RTL design suitable for simulation and potential deployment on an FPGA.
+System Architecture
 
-* Design a reliable two-road traffic light controller using a Moore FSM.
-* Implement a clock divider to generate a one-second timing reference.
-* Develop a countdown timer for controlling the duration of each traffic signal.
-* Implement configurable green, yellow, and all-red durations.
-* Introduce all-red transition phases between opposing traffic directions.
-* Use clear state encoding and combinational output decoding.
-* Develop a design suitable for RTL simulation and potential FPGA implementation.
+The traffic controller is organized into three primary functional sections.
 
-## System Architecture
+1. Clock Divider
 
-The controller consists of three main logical blocks:
+The clock divider scales the FPGA's high-frequency clock into a one-second enable pulse. For the default 50 MHz clock, it counts 50,000,000 clock cycles to produce each timing pulse.
 
-### 1. Clock Divider
+This pulse allows the countdown timer to update at one-second intervals while keeping the FSM synchronized to the original FPGA clock. As a result, the design does not need a separate generated clock for the traffic controller.
 
-The clock divider converts the high-frequency FPGA clock into a periodic one-second enable pulse. With the default configuration of 50 MHz, the divider counts 50,000,000 clock cycles per second.
+2. Finite State Machine and Countdown Timer
 
-The generated pulse enables the countdown timer to update once per second without requiring a separate derived clock for the FSM.
+The FSM manages the current traffic-light phase and determines which phase should follow when the current interval ends.
 
-### 2. Finite State Machine and Countdown Timer
+At the beginning of each phase, the countdown timer is loaded with the appropriate duration. It then decreases by one on every one-second pulse. When the counter reaches zero and the next timing pulse arrives, the FSM advances to the next state and loads the corresponding timer value.
 
-The FSM determines the current traffic-light phase and selects the next phase when the countdown timer expires.
+3. Moore FSM Output Logic
 
-The timer loads a duration according to the upcoming state and decrements on each one-second tick. Once the timer reaches zero, the controller transitions to the next state.
+The output-decoding logic translates the current FSM state into the required light combinations for Road A and Road B.
 
-### 3. Moore Output Logic
+Because the controller follows the Moore FSM model, its traffic-light outputs are determined entirely by the active state.
 
-The output logic decodes the current state and generates the appropriate light patterns for Road A and Road B.
+Traffic Signal Operating Sequence
 
-Since this is a Moore FSM, the traffic-light outputs depend only on the current state.
+The controller progresses through six states in a continuous loop:
 
-## Traffic-Light Sequence
+State	Road A Signal	Road B Signal	Duration
+S0_A_GREEN	Green	Red	10 seconds
+S1_A_YELLOW	Yellow	Red	5 seconds
+S2_ALL_RED1	Red	Red	10 seconds
+S3_B_GREEN	Red	Green	10 seconds
+S4_B_YELLOW	Red	Yellow	5 seconds
+S5_ALL_RED2	Red	Red	10 seconds
 
-The controller uses six states in the following repeating sequence:
+Once the second all-red phase finishes, the controller returns to S0_A_GREEN and begins the cycle again.
 
-| State         | Road A | Road B | Duration   |
-| ------------- | ------ | ------ | ---------- |
-| `S0_A_GREEN`  | Green  | Red    | 10 seconds |
-| `S1_A_YELLOW` | Yellow | Red    | 5 seconds  |
-| `S2_ALL_RED1` | Red    | Red    | 10 seconds |
-| `S3_B_GREEN`  | Red    | Green  | 10 seconds |
-| `S4_B_YELLOW` | Red    | Yellow | 5 seconds  |
-| `S5_ALL_RED2` | Red    | Red    | 10 seconds |
+Using the default timing configuration, one complete sequence takes 50 seconds.
 
-After the second all-red state, the controller returns to the initial A GREEN state and repeats the sequence.
+FSM Design and State Transitions
 
-With the default parameters, the complete cycle lasts 50 seconds.
+A three-bit register is used to represent the six operating states of the traffic controller.
 
-## State Machine Design
+The transition order is:
 
-The FSM uses a three-bit state register to represent six traffic-light states.
+A_GREEN → A_YELLOW → ALL_RED → B_GREEN → B_YELLOW → ALL_RED → A_GREEN
 
-The state transitions follow this sequence:
+When the synchronous reset is asserted at a rising edge of the clock, the FSM initializes to S0_A_GREEN, making Road A green and Road B red.
 
-`A_GREEN → A_YELLOW → ALL_RED → B_GREEN → B_YELLOW → ALL_RED → A_GREEN`
+The design separates clocked operations, such as state and timer updates, from combinational operations, such as next-state selection and output decoding. This organization improves code readability and makes the controller easier to test, maintain, and extend with additional functionality.
 
-The initial state is `S0_A_GREEN`, selected when reset is asserted at a rising edge of the clock.
+Configurable Design Parameters
 
-The design separates sequential state and timer updates from combinational next-state logic and output decoding. This structure improves readability and makes the design easier to maintain, simulate, and extend.
+The controller uses parameters to define its operating clock frequency and traffic-signal durations.
 
-## Configurable Parameters
+Parameter	Default Setting	Purpose
+CLOCK_FREQ_HZ	50_000_000	Specifies the FPGA input clock frequency in hertz
+GREEN_TIME	10	Sets the green-light interval in seconds
+YELLOW_TIME	5	Sets the yellow-light interval in seconds
+ALL_RED_TIME	10	Defines the all-red clearance interval in seconds
 
-The controller supports parameterized timing values.
+These values can be overridden when the module is instantiated, making it possible to adapt the design to different FPGA clock rates or timing specifications.
 
-| Parameter       | Default value | Description                      |
-| --------------- | ------------: | -------------------------------- |
-| `CLOCK_FREQ_HZ` |  `50_000_000` | Input clock frequency in hertz   |
-| `GREEN_TIME`    |          `10` | Green-light duration in seconds  |
-| `YELLOW_TIME`   |           `5` | Yellow-light duration in seconds |
-| `ALL_RED_TIME`  |          `10` | All-red duration in seconds      |
+For accurate timing, CLOCK_FREQ_HZ must correspond to the actual clock frequency of the target FPGA board. Each configured signal duration must be a positive integer.
 
-These parameters can be changed during module instantiation to adapt the controller to different clock frequencies and timing requirements.
+Input and Output Interface
 
-The input clock frequency must match the actual FPGA board clock for the timing to be accurate. All phase-duration parameters should be positive integers.
+The design uses the following input and output signals:
 
-## Input and Output Signals
+Signal	Direction	Width	Function
+clk	Input	1 bit	Supplies the main FPGA clock
+rst	Input	1 bit	Provides a synchronous, active-high reset
+road_A	Output	3 bits	Represents the traffic-light signals for Road A
+road_B	Output	3 bits	Represents the traffic-light signals for Road B
 
-| Signal   | Direction | Width  | Description                   |
-| -------- | --------- | ------ | ----------------------------- |
-| `clk`    | Input     | 1 bit  | Main FPGA clock               |
-| `rst`    | Input     | 1 bit  | Synchronous active-high reset |
-| `road_A` | Output    | 3 bits | Traffic signals for Road A    |
-| `road_B` | Output    | 3 bits | Traffic signals for Road B    |
+The three-bit road outputs follow the bit arrangement {RED, YELLOW, GREEN}.
 
-Both road outputs use the bit ordering `{RED, YELLOW, GREEN}`.
+The corresponding signal codes are:
 
-The signal encodings are:
+3'b100 — Red light enabled
+3'b010 — Yellow light enabled
+3'b001 — Green light enabled
 
-* `3'b100` — Red
-* `3'b010` — Yellow
-* `3'b001` — Green
+These output values use active-high logic, meaning that a logic value of 1 activates the associated light.
 
-These encodings assume active-high outputs, where a logic HIGH turns on the corresponding light.
+Main Features
+Moore FSM implementation: Signal outputs are determined by the current state.
+Clock division: Converts the fast FPGA clock into a one-second timing reference.
+Countdown timer: Determines when each traffic-light phase ends.
+Adjustable timing parameters: Allows the clock frequency and signal durations to be customized.
+All-red clearance phases: Inserts an explicit interval between opposing traffic movements.
+Default-safe output decoding: Assigns red signals to both roads when an unrecognized state is encountered by the output logic.
+Synchronous reset mechanism: Initializes the controller to the A GREEN state.
+Modular RTL organization: Keeps timing control, state transitions, and signal decoding logically separated.
+Simulation and Verification
 
-## Key Features
+The RTL design can be tested using Verilog simulation tools such as Icarus Verilog, ModelSim, QuestaSim, or Vivado Simulator.
 
-* **Moore FSM architecture:** Outputs depend only on the current state.
-* **Clock divider:** Generates a one-second timing pulse from the FPGA clock.
-* **Countdown timer:** Controls the duration of each traffic-light phase.
-* **Parameterized timing:** Supports configurable clock frequency and signal durations.
-* **All-red transition states:** Provides an explicit clearance phase between opposing directions.
-* **Safe default output decoding:** Unhandled state encodings produce red outputs for both roads.
-* **Synchronous reset:** Initializes the controller to Road A GREEN.
-* **Modular RTL structure:** Separates timing, state transitions, and output decoding.
+A dedicated testbench can be used to examine the reset sequence, state progression, signal durations, and output behavior. To reduce simulation time, the clock-frequency parameter can be set to a smaller value, such as 10 Hz, so that ten simulated clock cycles correspond to one second.
 
-## Simulation and Verification
+The following conditions are useful for verification:
 
-The design can be verified using a Verilog simulator such as Icarus Verilog, QuestaSim, ModelSim, or Vivado Simulator.
-
-A testbench can validate the reset behavior, traffic-light sequence, state durations, and output combinations. For faster simulation, the clock frequency parameter can be reduced to a small value, such as 10 Hz, so each simulated second requires only ten clock cycles.
-
-Useful verification checks include:
-
-1. The controller starts in A GREEN after reset.
-2. The states occur in the intended order.
-3. Each state remains active for its configured duration.
-4. Both roads are never green simultaneously.
-5. The controller returns to A GREEN after completing a cycle.
-6. Invalid state values produce the default red-light output combination.
-
-## Technologies Used
-
-* **Hardware Description Language:** Verilog HDL
-* **Design methodology:** RTL design
-* **Digital design concept:** Moore Finite State Machine
-* **Timing mechanism:** Clock divider and countdown timer
-* **Verification:** Verilog testbench and RTL simulation
-* **Target platform:** FPGA, subject to synthesis, timing constraints, and board-specific integration
-
-## Applications
-
-This project can be used as an educational example for understanding FSM-based digital controllers, timing circuits, RTL coding practices, and FPGA development workflows.
-
-It can also serve as a starting point for extended designs involving pedestrian crossings, emergency-vehicle priority, configurable operating modes, sensor inputs, and more advanced traffic-control strategies.
-
-## Future Enhancements
-
-Potential extensions include:
-
-* Pedestrian crossing request and control.
-* Emergency vehicle priority.
-* Adjustable signal timings through switches or a communication interface.
-* Seven-segment display for countdown visualization.
-* Sensor-based traffic density detection.
-* Automatic FSM recovery and additional fault monitoring.
-* Improved verification through assertions and automated timing checks.
-
-## Conclusion
-
-The FPGA Traffic Light Controller demonstrates how a finite state machine, clock divider, and countdown timer can be integrated to create a parameterized digital control system using Verilog HDL. Its modular structure provides a foundation for learning sequential logic design, RTL simulation, and FPGA-based control applications.
-
-**Note:** This is an educational RTL project, not a certified traffic-control system. The default all-red duration and other timing values are illustrative and must be validated against appropriate requirements before any real-world deployment.
+The controller enters the A GREEN state after reset.
+The FSM follows the specified sequence of six states.
+Each phase remains active for its configured duration.
+Road A and Road B are never green simultaneously.
+The controller returns to A GREEN after completing a full cycle.
+An invalid state produces the default all-red output pattern.
+Technologies and Design Concepts
+Hardware description language: Verilog HDL
+Design approach: Register Transfer Level (RTL)
+Control architecture: Moore Finite State Machine
+Timing components: Clock divider and countdown timer
+Testing methodology: Verilog testbench and RTL simulation
+Implementation target: FPGA, subject to synthesis, timing analysis, and hardware-specific configuration
